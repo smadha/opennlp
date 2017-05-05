@@ -24,6 +24,7 @@ import java.util.SortedMap;
 import org.junit.Assert;
 import org.junit.Test;
 
+import opennlp.tools.util.InsufficientTrainingDataException;
 import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.ObjectStreamUtils;
 import opennlp.tools.util.TrainingParameters;
@@ -42,8 +43,8 @@ public class DocumentCategorizerMETest {
         new DocumentSample("0", new String[]{"x", "y", "z", "7", "8"}));
 
     TrainingParameters params = new TrainingParameters();
-    params.put(TrainingParameters.ITERATIONS_PARAM, "100");
-    params.put(TrainingParameters.CUTOFF_PARAM, "0");
+    params.put(TrainingParameters.ITERATIONS_PARAM, 100);
+    params.put(TrainingParameters.CUTOFF_PARAM, 0);
 
     DoccatModel model = DocumentCategorizerME.train("x-unspecified", samples,
             params, new DoccatFactory());
@@ -61,4 +62,20 @@ public class DocumentCategorizerMETest {
     Set<String> cat = sortedScoreMap.get(sortedScoreMap.lastKey());
     Assert.assertEquals(1, cat.size());
   }
+  
+  @Test(expected = InsufficientTrainingDataException.class)
+  public void insufficientTestData() throws IOException {
+
+    ObjectStream<DocumentSample> samples = ObjectStreamUtils.createObjectStream(
+        new DocumentSample("1", new String[]{"a", "b", "c"}));
+
+    TrainingParameters params = new TrainingParameters();
+    params.put(TrainingParameters.ITERATIONS_PARAM, 100);
+    params.put(TrainingParameters.CUTOFF_PARAM, 0);
+
+    DocumentCategorizerME.train("x-unspecified", samples,
+        params, new DoccatFactory());
+
+  }
+  
 }

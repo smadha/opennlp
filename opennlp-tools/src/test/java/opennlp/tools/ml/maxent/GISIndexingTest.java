@@ -17,6 +17,7 @@
 
 package opennlp.tools.ml.maxent;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +27,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import opennlp.tools.ml.AbstractEventTrainer;
+import opennlp.tools.ml.AbstractTrainer;
 import opennlp.tools.ml.EventTrainer;
 import opennlp.tools.ml.TrainerFactory;
 import opennlp.tools.ml.maxent.quasinewton.QNTrainer;
@@ -36,6 +38,7 @@ import opennlp.tools.ml.model.Event;
 import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.ObjectStreamUtils;
 import opennlp.tools.util.TrainingParameters;
+import opennlp.tools.util.model.ModelUtil;
 
 public class GISIndexingTest {
 
@@ -58,40 +61,63 @@ public class GISIndexingTest {
    * Test the GIS.trainModel(ObjectStream<Event> eventStream) method
    */
   @Test
-  public void testGISTrainSignature1() throws Exception {
-    ObjectStream<Event> eventStream = createEventStream();
-    Assert.assertNotNull(GIS.trainModel(eventStream));
-    eventStream.close();
+  public void testGISTrainSignature1() throws IOException {
+    try (ObjectStream<Event> eventStream = createEventStream()) {
+      TrainingParameters params = ModelUtil.createDefaultTrainingParameters();
+      params.put(AbstractTrainer.CUTOFF_PARAM, 1);
+
+      EventTrainer trainer = TrainerFactory.getEventTrainer(params,  null);
+
+      Assert.assertNotNull(trainer.train(eventStream));
+    }
   }
 
   /*
    * Test the GIS.trainModel(ObjectStream<Event> eventStream,boolean smoothing) method
    */
   @Test
-  public void testGISTrainSignature2() throws Exception {
-    ObjectStream<Event> eventStream = createEventStream();
-    Assert.assertNotNull(GIS.trainModel(eventStream,true));
-    eventStream.close();
+  public void testGISTrainSignature2() throws IOException {
+    try (ObjectStream<Event> eventStream = createEventStream()) {
+      TrainingParameters params = ModelUtil.createDefaultTrainingParameters();
+      params.put(AbstractTrainer.CUTOFF_PARAM, 1);
+      params.put("smoothing", true);
+      EventTrainer trainer = TrainerFactory.getEventTrainer(params, null);
+
+      Assert.assertNotNull(trainer.train(eventStream));
+    }
   }
   
   /*
    * Test the GIS.trainModel(ObjectStream<Event> eventStream, int iterations, int cutoff) method
    */
   @Test
-  public void testGISTrainSignature3() throws Exception {
-    ObjectStream<Event> eventStream = createEventStream();
-    Assert.assertNotNull(GIS.trainModel(eventStream,10,1));
-    eventStream.close();
+  public void testGISTrainSignature3() throws IOException {
+    try (ObjectStream<Event> eventStream = createEventStream()) {
+      TrainingParameters params = ModelUtil.createDefaultTrainingParameters();
+
+      params.put(AbstractTrainer.ITERATIONS_PARAM, 10);
+      params.put(AbstractTrainer.CUTOFF_PARAM, 1);
+
+      EventTrainer trainer = TrainerFactory.getEventTrainer(params, null);
+
+      Assert.assertNotNull(trainer.train(eventStream));
+    }
   }
  
   /*
    * Test the GIS.trainModel(ObjectStream<Event> eventStream, int iterations, int cutoff, double sigma) method
    */
   @Test
-  public void testGISTrainSignature4() throws Exception {
-    ObjectStream<Event> eventStream = createEventStream();
-    Assert.assertNotNull(GIS.trainModel(eventStream,10,1,0.01));
-    eventStream.close();
+  public void testGISTrainSignature4() throws IOException {
+    try (ObjectStream<Event> eventStream = createEventStream()) {
+      TrainingParameters params = ModelUtil.createDefaultTrainingParameters();
+      params.put(AbstractTrainer.ITERATIONS_PARAM, 10);
+      params.put(AbstractTrainer.CUTOFF_PARAM, 1);
+      GISTrainer trainer = (GISTrainer) TrainerFactory.getEventTrainer(params, null);
+      trainer.setGaussianSigma(0.01);
+
+      Assert.assertNotNull(trainer.trainModel(eventStream));
+    }
   }
   
   /*
@@ -99,23 +125,31 @@ public class GISIndexingTest {
    * boolean smoothing, boolean printMessagesWhileTraining)) method
    */
   @Test
-  public void testGISTrainSignature5() throws Exception {
-    ObjectStream<Event> eventStream = createEventStream();
-    Assert.assertNotNull(GIS.trainModel(eventStream,10,1,false,false));
-    eventStream.close();
+  public void testGISTrainSignature5() throws IOException {
+    try (ObjectStream<Event> eventStream = createEventStream()) {
+      TrainingParameters params = ModelUtil.createDefaultTrainingParameters();
+
+      params.put(AbstractTrainer.ITERATIONS_PARAM, 10);
+      params.put(AbstractTrainer.CUTOFF_PARAM, 1);
+      params.put("smoothing", false);
+      params.put(AbstractTrainer.VERBOSE_PARAM, false);
+
+      EventTrainer trainer = TrainerFactory.getEventTrainer(params, null);
+      Assert.assertNotNull(trainer.train(eventStream));
+    }
   }
   
   @Test
-  public void testIndexingWithTrainingParameters() throws Exception {
+  public void testIndexingWithTrainingParameters() throws IOException {
     ObjectStream<Event> eventStream = createEventStream();
     
     TrainingParameters parameters = TrainingParameters.defaultParams();
     // by default we are using GIS/EventTrainer/Cutoff of 5/100 iterations
-    parameters.put(TrainingParameters.ITERATIONS_PARAM, "10");
+    parameters.put(TrainingParameters.ITERATIONS_PARAM, 10);
     parameters.put(AbstractEventTrainer.DATA_INDEXER_PARAM, AbstractEventTrainer.DATA_INDEXER_ONE_PASS_VALUE);
-    parameters.put(AbstractEventTrainer.CUTOFF_PARAM, "1");
+    parameters.put(AbstractEventTrainer.CUTOFF_PARAM, 1);
     // note: setting the SORT_PARAM to true is the default, so it is not really needed
-    parameters.put(AbstractDataIndexer.SORT_PARAM, "true");
+    parameters.put(AbstractDataIndexer.SORT_PARAM, true);
 
     // guarantee that you have a GIS trainer...
     EventTrainer trainer =
@@ -135,7 +169,7 @@ public class GISIndexingTest {
  
     parameters.put(TrainingParameters.ALGORITHM_PARAM, QNTrainer.MAXENT_QN_VALUE);
     parameters.put(AbstractEventTrainer.DATA_INDEXER_PARAM, AbstractEventTrainer.DATA_INDEXER_TWO_PASS_VALUE);
-    parameters.put(AbstractEventTrainer.CUTOFF_PARAM, "2");
+    parameters.put(AbstractEventTrainer.CUTOFF_PARAM, 2);
     
     trainer = TrainerFactory.getEventTrainer(parameters, new HashMap<>());
     Assert.assertEquals("opennlp.tools.ml.maxent.quasinewton.QNTrainer", trainer.getClass().getName());
@@ -147,13 +181,13 @@ public class GISIndexingTest {
   }
   
   @Test
-  public void testIndexingFactory() throws Exception {
+  public void testIndexingFactory() throws IOException {
     Map<String,String> myReportMap = new HashMap<>();
     ObjectStream<Event> eventStream = createEventStream();
 
     // set the cutoff to 1 for this test.
     TrainingParameters parameters = new TrainingParameters();
-    parameters.put(AbstractDataIndexer.CUTOFF_PARAM, "1");
+    parameters.put(AbstractDataIndexer.CUTOFF_PARAM, 1);
     
     // test with a 1 pass data indexer...
     parameters.put(AbstractEventTrainer.DATA_INDEXER_PARAM, AbstractEventTrainer.DATA_INDEXER_ONE_PASS_VALUE);
